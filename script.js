@@ -31,7 +31,7 @@ function clearResult() {
 // =======================
 async function fetchDownloadInfo(videoUrl) {
   const apiUrl =
-    "https://dl.siputzx.my.id" +
+    "https://api.douyin.wtf" +
     encodeURIComponent(videoUrl) +
     "&hd=1";
 
