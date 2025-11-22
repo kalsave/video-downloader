@@ -369,22 +369,22 @@ function renderResult(payload) {
     box.style.alignItems = "center";
 
     if (photoUrl) {
-      const aPhoto = document.createElement("a");
-      aPhoto.href = photoUrl;
-      aPhoto.download = "";
-      aPhoto.className = "download-btn";
-      aPhoto.textContent = "Download Foto";
-      box.appendChild(aPhoto);
-    }
+  const aPhoto = document.createElement("button");
+  aPhoto.className = "download-btn btn-download";
+  aPhoto.dataset.url = photoUrl;
+  aPhoto.dataset.fn = "photo.jpg";
+  aPhoto.textContent = "Download Foto";
+  box.appendChild(aPhoto);
+}
 
-    if (audioUrl) {
-      const aAudio = document.createElement("a");
-      aAudio.href = audioUrl;
-      aAudio.download = "";
-      aAudio.className = "download-btn";
-      aAudio.textContent = "Download Audio";
-      box.appendChild(aAudio);
-    }
+if (audioUrl) {
+  const aAudio = document.createElement("button");
+  aAudio.className = "download-btn btn-download";
+  aAudio.dataset.url = audioUrl;
+  aAudio.dataset.fn = "audio.mp3";
+  aAudio.textContent = "Download Audio";
+  box.appendChild(aAudio);
+}
 
     resultList.appendChild(box);
   }
@@ -407,7 +407,7 @@ async function processUrl(videoUrl) {
     renderResult(json);
   } catch (err) {
     console.error("API error:", err);
-    let msg = err.message || "Gagal memanggil API";
+    let msg = err.message || "Gagal";
     if ((err.raw && String(err.raw).toLowerCase().includes("cors")) || msg.toLowerCase().includes("cors")) {
       msg = "Request diblokir (CORS). Solusi: gunakan server-proxy atau aktifkan CORS proxy untuk testing.";
     } else if (err.raw) {
@@ -426,7 +426,7 @@ async function processUrl(videoUrl) {
 gasBtn.addEventListener("click", () => {
   const u = (urlInput.value || "").trim();
   if (!u) {
-    showStatus("Masukkan URL video dulu.", "error");
+    showStatus("Masukkan URL video dulu!", "error");
     return;
   }
   try { new URL(u); } catch { showStatus("Format URL tidak valid.", "error"); return; }
