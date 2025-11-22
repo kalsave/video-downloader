@@ -18,7 +18,7 @@ const CORS_PROXY = "https://www.tikwm.com/api/?url="; // contoh public proxy (ra
 const urlInput = document.getElementById("urlInput");
 const gasBtn = document.getElementById("gasBtn");
 const clearBtn = document.getElementById("clearBtn");
-const statusBox = document.getElementById("statusBox");
+const statusBox = document.getElementById("statusBox"); // may be null in your HTML
 const resultBox = document.getElementById("resultBox");
 const resultList = document.getElementById("resultList");
 
@@ -31,17 +31,80 @@ const thumbImg = document.getElementById("thumbImg");
 // ------------------------------------------------------
 // UI helpers
 // ------------------------------------------------------
+function _ensureStatusBox() {
+  // try to get existing
+  let box = document.getElementById("statusBox");
+  if (box) return box;
+
+  // kalau nggak ada, buat element floating kecil di body
+  box = document.createElement("div");
+  box.id = "statusBox";
+  box.style.position = "fixed";
+  box.style.left = "50%";
+  box.style.transform = "translateX(-50%)";
+  box.style.top = "92px";
+  box.style.zIndex = "9999";
+  box.style.padding = "10px 14px";
+  box.style.borderRadius = "8px";
+  box.style.boxShadow = "0 6px 20px rgba(0,0,0,0.45)";
+  box.style.fontWeight = "600";
+  box.style.maxWidth = "92%";
+  box.style.textAlign = "center";
+  box.style.backdropFilter = "blur(6px)";
+  box.style.display = "none";
+  box.dataset.type = "info"; // default
+  // minimal color styling; your CSS can override if you add #statusBox selector
+  box.style.background = "rgba(30,60,90,0.9)";
+  box.style.color = "#eaf2ff";
+
+  document.body.appendChild(box);
+  return box;
+}
+
 function showStatus(msg, kind = "info") {
-  if (!statusBox) return;
-  statusBox.classList.remove("hidden");
-  statusBox.textContent = msg;
-  statusBox.dataset.type = kind;
+  // prefer existing element referenced by const statusBox if present in DOM
+  let box = document.getElementById("statusBox") || _ensureStatusBox();
+  if (!box) {
+    // ultimate fallback
+    try { alert(msg); } catch (e) { /* ignore */ }
+    return;
+  }
+  box.dataset.type = kind;
+  box.textContent = msg;
+  box.style.display = "block";
+
+  // basic color mapping for the dynamic box so user sees differences
+  if (!document.getElementById("statusBox")) {
+    // nothing — we already appended in _ensureStatusBox
+  }
+  if (kind === "error") {
+    box.style.background = "rgba(180,40,60,0.95)";
+    box.style.color = "#fff";
+  } else if (kind === "success") {
+    box.style.background = "rgba(30,120,60,0.95)";
+    box.style.color = "#fff";
+  } else {
+    box.style.background = "rgba(30,60,90,0.95)";
+    box.style.color = "#eaf2ff";
+  }
+
+  // auto-hide after 6s (but keep if it's an 'info' long process)
+  if (kind !== "info") {
+    clearTimeout(box._hideTimeout);
+    box._hideTimeout = setTimeout(() => {
+      try { hideStatus(); } catch (e) {}
+    }, 6000);
+  }
 }
 function hideStatus() {
-  if (!statusBox) return;
-  statusBox.classList.add("hidden");
-  statusBox.textContent = "";
+  const box = document.getElementById("statusBox");
+  if (!box) return;
+  box.style.display = "none";
+  box.textContent = "";
+  box.dataset.type = "";
+  if (box._hideTimeout) { clearTimeout(box._hideTimeout); box._hideTimeout = null; }
 }
+
 function clearResults() {
   if (resultList) resultList.innerHTML = "";
   if (resultBox) resultBox.classList.add("hidden");
@@ -161,7 +224,6 @@ async function downloadBlob(url, filename = "video.mp4") {
 // ------------------------------------------------------
 // Render result: map various possible response shapes into UI
 // ------------------------------------------------------
-
 function renderResult(payload) {
   // normalize payload if wrapper { ok: true, result: {...} }
   if (payload && payload.ok && payload.result) payload = payload.result;
