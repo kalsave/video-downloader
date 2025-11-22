@@ -272,8 +272,10 @@ downloads.forEach(d => {
     </div>
 
     <div class="download-actions">
-      <a href="${d.url}" download class="download-btn">Download Video</a>
-    </div>
+  <button class="download-btn" onclick="forceDownloadVideo('${d.url}')">
+    Download Video
+  </button>
+</div>
   `;
   resultList.appendChild(node);
 });
@@ -384,6 +386,26 @@ if (resultList) {
 clearResults();
 hideStatus();
 
+//INI TAMBAHAN BUAT DIRECT DOWNLOAD//
+async function forceDownloadVideo(url) {
+  try {
+    const res = await fetch(url);
+    const blob = await res.blob();
+    const blobUrl = window.URL.createObjectURL(blob);
+
+    const a = document.createElement("a");
+    a.href = blobUrl;
+    a.download = "video.mp4";
+    document.body.appendChild(a);
+    a.click();
+
+    a.remove();
+    window.URL.revokeObjectURL(blobUrl);
+
+  } catch(err) {
+    alert("Gagal download video: " + err.message);
+  }
+}
 /* NOTES:
  - Ganti API_BASE ke endpoint yang sesuai. Jika endpoint butuh POST / body JSON, ubah callApi() agar melakukan POST.
  - Jangan taruh API_KEY di client untuk production; buat server proxy dan simpan key di ENV.
