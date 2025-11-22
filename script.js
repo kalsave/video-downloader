@@ -682,9 +682,218 @@ async function forceDownloadVideo(url) {
   // allow manual trigger via window for dev/testing
   window.__triggerLightning = spawnFlash;
 })();
+
+/* ===== Lightning effect concentrated on Killua body =====
+   Paste this into script.js BEFORE the "// init" section
+*/
+(function attachLightning() {
+  const canvas = document.getElementById("lightningCanvas");
+  if (!canvas) return;
+  const ctx = canvas.getContext("2d", { alpha: true });
+
+  let DPR = Math.max(1, window.devicePixelRatio || 1);
+  function resize() {
+    const w = window.innerWidth;
+    const h = window.innerHeight;
+    canvas.style.width = w + "px";
+    canvas.style.height = h + "px";
+    canvas.width = Math.round(w * DPR);
+    canvas.height = Math.round(h * DPR);
+    ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+  }
+  window.addEventListener("resize", resize);
+  resize();
+
+  // config
+  const flashes = [];
+  function rand(a,b){ return a + Math.random()*(b-a); }
+
+  // read body-area from CSS vars (percent -> px)
+  function getBodyArea() {
+    const cs = getComputedStyle(document.documentElement);
+    const toPx = (v, total) => {
+      if (!v) return 0;
+      if (v.trim().endsWith("%")) return total * (parseFloat(v) / 100);
+      return parseFloat(v);
+    };
+    const w = window.innerWidth, h = window.innerHeight;
+    const bx = cs.getPropertyValue('--body-x') || '35%';
+    const by = cs.getPropertyValue('--body-y') || '20%';
+    const bw = cs.getPropertyValue('--body-w') || '30%';
+    const bh = cs.getPropertyValue('--body-h') || '45%';
+    return {
+      x: toPx(bx, w),
+      y: toPx(by, h),
+      w: toPx(bw, w),
+      h: toPx(bh, h)
+    };
+  }
+
+  // spawn one flash (a short-lived branching bolt)
+  function spawnFlash() {
+    const a = getBodyArea();
+    const cx = rand(a.x, a.x + a.w);
+    const cy = rand(a.y, a.y + a.h);
+    const scale = rand(0.6, 1.6);
+    const life = rand(160, 380); // ms
+    flashes.push({ x: cx, y: cy, created: performance.now(), life, scale });
+  }
+
+  // draw single flash with branching lines & glow
+  function drawFlash(f, t) {
+    const age = t - f.created;
+    const p = Math.min(1, age / f.life);
+    const alpha = 1 - p;
+    // glow
+    ctx.save();
+    ctx.globalCompositeOperation = "lighter";
+    // radial glow
+    const g = ctx.createRadialGradient(f.x, f.y, 0, f.x, f.y, 140 * f.scale);
+    g.addColorStop(0, `rgba(150,200,255,${0.35 * alpha})`);
+    g.addColorStop(0.5, `rgba(60,140,255,${0.08 * alpha})`);
+    g.addColorStop(1, "rgba(0,0,0,0)");
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.arc(f.x, f.y, 140 * f.scale, 0, Math.PI*2);
+    ctx.fill();
+
+    // small bright core
+    ctx.beginPath();
+    ctx.fillStyle = `rgba(220,245,255,${0.45 * alpha})`;
+    ctx.arc(f.x, f.y, 6 * f.scale, 0, Math.PI*2);
+    ctx.fill();
+
+    // branching bolts
+    const branches = Math.round(3 + Math.random()*4);
+    for (let b=0; b<branches; b++) {
+      let sx = f.x;
+      let sy = f.y;
+      const length = rand(60, 220) * f.scale;
+      const steps = Math.round(6 + Math.random()*8);
+      ctx.beginPath();
+      ctx.moveTo(sx, sy);
+      for (let i=0;i<steps;i++) {
+        const ang = rand(-Math.PI/2, Math.PI/2) + (i/steps - 0.5) * 0.6;
+        sx += Math.cos(ang) * (length/steps) * (0.9 + Math.random()*0.3);
+        sy += Math.sin(ang) * (length/steps) * (0.9 + Math.random()*0.3) + rand(-6,6);
+        if (Math.random() < 0.15) {
+          // small fork
+          ctx.moveTo(sx, sy);
+        } else {
+          ctx.lineTo(sx, sy);
+        }
+      }
+      ctx.lineWidth = Math.max(1.0, 3.2 * (1 - p) * f.scale);
+      ctx.strokeStyle = `rgba(200,230,255,${0.9 * alpha})`;
+      ctx.stroke();
+
+      // thin bright overlay
+      ctx.beginPath();
+      ctx.moveTo(f.x, f.y);
+      sx = f.x; sy = f.y;
+      for (let i=0;i<Math.round(steps/1.6);i++) {
+        const ang = rand(-Math.PI/2, Math.PI/2) + (i/steps - 0.5) * 0.4;
+        sx += Math.cos(ang) * (length/steps) * (0.9 + Math.random()*0.2);
+        sy += Math.sin(ang) * (length/steps) * (0.9 + Math.random()*0.2) + rand(-4,4);
+        ctx.lineTo(sx, sy);
+      }
+      ctx.lineWidth = Math.max(0.6, 1.6 * (1 - p) * f.scale);
+      ctx.strokeStyle = `rgba(255,255,255,${0.55 * alpha})`;
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
+
+  // animation loop
+  let last = performance.now();
+  function frame(ts) {
+    const dt = ts - last; last = ts;
+    // fade canvas a bit to keep trails
+    ctx.clearRect(0,0,canvas.width/DPR, canvas.height/DPR);
+    // randomly spawn ambient flashes
+    if (Math.random() < 0.02) spawnFlash(); // background ambient
+    // occasional bigger flash
+    if (Math.random() < 0.006) {
+      // spawn 1-2 bigger focused flashes
+      spawnFlash();
+      if (Math.random() < 0.6) spawnFlash();
+    }
+
+    // draw each flash
+    for (let i = flashes.length - 1; i >= 0; i--) {
+      const f = flashes[i];
+      const age = ts - f.created;
+      if (age > f.life) {
+        flashes.splice(i, 1);
+        continue;
+      }
+      drawFlash(f, ts);
+    }
+
+    requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+
+  // expose trigger for debugging
+  window.__triggerLightning = spawnFlash;
+})();
 // init
 clearResults();
 hideStatus();
+
+/* ---- Lightning canvas (tembus & di bawah konten) ---- */
+#lightningCanvas {
+  position: fixed;
+  left: 0;
+  top: 0;
+  width: 100vw;
+  height: 100vh;
+  pointer-events: none; /* jangan ganggu klik */
+  z-index: 0;           /* pastikan .page punya z-index > 0 (sudah ada) */
+  mix-blend-mode: screen; /* bikin glow lebih 'neon' di atas background */
+}
+
+/* area badan Killua (sesuaikan jika perlu) - persentase viewport */
+:root {
+  --body-x: 35%;   /* jarak dari kiri */
+  --body-y: 20%;   /* jarak dari atas */
+  --body-w: 30%;   /* lebar area */
+  --body-h: 45%;   /* tinggi area */
+}
+
+/* optional: lebih terang bila mau (bisa disable) */
+.bg-flash { /* kalau kamu pakai elemen ini untuk efek tambahan */ 
+  pointer-events: none;
+}
+
+body {
+  animation: bgMove 10s ease-in-out infinite alternate;
+}
+
+@keyframes bgMove {
+  0% {
+    background-position: center top;
+  }
+  100% {
+    background-position: center 20px;
+  }
+}
+.bg-flash {
+  position: fixed;
+  inset: 0;
+  background-image: url("lightning-overlay.png"); /* bikin file overlay */
+  opacity: 0.15;
+  mix-blend-mode: screen;
+  animation: flashMove 2s infinite linear;
+  pointer-events: none;
+  z-index: 0;
+}
+
+@keyframes flashMove {
+  0% { transform: translateY(0); opacity: 0.1; }
+  50% { transform: translateY(-20px); opacity: 0.2; }
+  100% { transform: translateY(0); opacity: 0.1; }
+}
 /* NOTES:
  - Ganti API_BASE ke endpoint yang sesuai. Jika endpoint butuh POST / body JSON, ubah callApi() agar melakukan POST.
  - Jangan taruh API_KEY di client untuk production; buat server proxy dan simpan key di ENV.
