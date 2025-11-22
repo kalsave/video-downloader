@@ -317,3 +317,24 @@ body {
   opacity: 0;
   transform: translateY(-6px);
 }
+button.download-btn {
+  background: #2d5bff;       /* warna biru tombol kamu */
+  color: #fff;
+  border: none;
+  padding: 12px 18px;
+  border-radius: 14px;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  outline: none;
+  display: inline-block;
+}
+
+button.download-btn:active {
+  opacity: 0.8;
+}
+
+button.download-btn:focus {
+  outline: none !important;
+  box-shadow: none !important;
+}
