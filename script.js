@@ -207,13 +207,16 @@ function renderResult(payload) {
     const node = document.createElement("div");
     node.className = "result-item";
     node.innerHTML = `
-      <div style="display:flex;flex-direction:column;">
-        <div style="font-weight:600">${d.label}</div>
-        <div style="opacity:.75;font-size:13px">${d.size || ""}</div>
-      </div>
-      <div>
-        <a class="btn-dl" href="${d.url}" target="_blank" rel="noopener">Open / Download</a>
-      </div>`;
+  <div style="display:flex;flex-direction:column;margin-bottom:8px;">
+    <div style="font-weight:600">${d.label}</div>
+    <div style="opacity:.75;font-size:13px">${d.size || ""}</div>
+  </div>
+
+  <div>
+    <a href="${d.url}" target="_blank" class="open-btn">Open</a>
+    <a href="${d.url}" download class="download-btn">Download</a>
+  </div>
+`;
     resultList.appendChild(node);
   });
 
