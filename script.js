@@ -7,9 +7,10 @@ const API_BASE = "https://www.tikwm.com/api/?url=";
 // - Jika pakai TikHub langsung, lihat docs.tikhub.io untuk path endpoint yang benar.
 // - Jika API tidak butuh key, kosongkan API_KEY.
 const API_KEY = ""; // jika perlu: "Bearer xxxxx" atau "API_KEY_HERE"
+
 // CORS proxy (testing only) - jangan pakai untuk produksi
 const USE_CORS_PROXY = false;
-const CORS_PROXY = "https://www.tikwm.com/api/?url="; // contoh public proxy (rate limit & tidak disarankan)
+const CORS_PROXY = "https://www.tikwm.com/api/?url="; // contoh public proxy (rate-limit & tidak disarankan)
 
 // ------------------------------------------------------
 // DOM elements (sesuaikan id di index.html mu)
@@ -21,7 +22,7 @@ const statusBox = document.getElementById("statusBox");
 const resultBox = document.getElementById("resultBox");
 const resultList = document.getElementById("resultList");
 
-// optional: player container (if kamu punya <div id="playerBox"><video id="previewVideo">)
+// optional: player / thumbnail containers (jika ada di HTML)
 const playerBox = document.getElementById("playerBox");
 const previewVideo = document.getElementById("previewVideo");
 const thumbBox = document.getElementById("thumbBox");
@@ -84,20 +85,17 @@ function pickThumbnail(json) {
 
 // ------------------------------------------------------
 // Build request & call API
-// - API_BASE expected to accept ?url=VIDEO_URL or similar pattern
-// - If API requires Authorization, set API_KEY to "Bearer ...." or "APIKEY ..." accordingly
 // ------------------------------------------------------
 async function callApi(videoUrl) {
   // build endpoint (simple concat). If API expects POST or other param, modify di sini.
   let endpoint = API_BASE + encodeURIComponent(videoUrl);
 
   if (USE_CORS_PROXY) {
-    endpoint = CORS_PROXY + encodeURIComponent(endpoint);
+    endpoint = CORS_PROXY + endpoint;
   }
 
   const headers = { Accept: "application/json" };
   if (API_KEY && API_KEY.length) {
-    // if API_KEY already includes "Bearer " prefix, pass as-is
     headers["Authorization"] = API_KEY;
   }
 
@@ -113,7 +111,6 @@ async function callApi(videoUrl) {
   if (ct.includes("application/json") || ct.includes("text/json")) {
     return res.json();
   } else {
-    // try parse text->json
     const txt = await res.text();
     try {
       return JSON.parse(txt);
@@ -122,6 +119,42 @@ async function callApi(videoUrl) {
       err.raw = txt;
       throw err;
     }
+  }
+}
+
+// ------------------------------------------------------
+// Download utility: fetch -> blob -> save
+// - note: akan gagal jika file server memblok CORS (browser)
+// ------------------------------------------------------
+async function downloadBlob(url, filename = "video.mp4") {
+  try {
+    showStatus("Mengunduh file...", "info");
+
+    // if you want to route file download through proxy for CORS testing:
+    let fetchUrl = url;
+    if (USE_CORS_PROXY) fetchUrl = CORS_PROXY + url;
+
+    const res = await fetch(fetchUrl);
+    if (!res.ok) throw new Error("Fetch failed: " + res.status);
+
+    const blob = await res.blob();
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(a.href);
+
+    hideStatus();
+  } catch (err) {
+    console.error("Download error", err);
+    let msg = err.message || "Gagal mendownload";
+    if (String(msg).toLowerCase().includes("cors")) {
+      msg = "Gagal mendownload — kemungkinan diblokir CORS. Gunakan server-proxy untuk mengatasi.";
+    }
+    showStatus("Error: " + msg, "error");
+    throw err;
   }
 }
 
@@ -145,7 +178,8 @@ function renderResult(payload) {
       downloads.push({
         label: d.label || d.quality || d.name || "Video",
         url: d.url || d.link || d.src || d,
-        size: d.size || d.filesize || ""
+        size: d.size || d.filesize || "",
+        filename: d.filename || ""
       });
     });
   }
@@ -160,10 +194,9 @@ function renderResult(payload) {
   // fallback: extract URLs from object
   if (!downloads.length) {
     const urls = Array.from(collectUrls(payload));
-    // prefer mp4/play-like urls
     const preferred = urls.filter(u => /\.mp4(\?|$)/i.test(u) || /play/i.test(u) || /video/i.test(u));
     const uniq = Array.from(new Set(preferred.length ? preferred : urls));
-    uniq.forEach((u, i) => downloads.push({ label: `Detected ${i+1}`, url: u, size: "" }));
+    uniq.forEach((u, i) => downloads.push({ label: `Detected ${i+1}`, url: u, size: "", filename: `video_${i+1}.mp4` }));
   }
 
   // UI: show thumbnail / video preview if available
@@ -194,7 +227,6 @@ function renderResult(payload) {
   // Optional: show player using first download (if it's a playable mp4)
   if (downloads.length && previewVideo && playerBox) {
     const first = downloads[0].url;
-    // only set if seems like mp4 or playable
     if (/\.mp4(\?|$)/i.test(first) || /play/i.test(first) || first.includes("http")) {
       previewVideo.src = first;
       previewVideo.load();
@@ -203,20 +235,20 @@ function renderResult(payload) {
   }
 
   // Render download rows
-  downloads.forEach(d => {
+  downloads.forEach((d, idx) => {
     const node = document.createElement("div");
     node.className = "result-item";
     node.innerHTML = `
-  <div style="display:flex;flex-direction:column;margin-bottom:8px;">
-    <div style="font-weight:600">${d.label}</div>
-    <div style="opacity:.75;font-size:13px">${d.size || ""}</div>
-  </div>
+      <div style="display:flex;flex-direction:column;margin-bottom:8px;">
+        <div style="font-weight:600">${d.label}</div>
+        <div style="opacity:.75;font-size:13px">${d.size || ""}</div>
+      </div>
 
-  <div>
-    <a href="${d.url}" target="_blank" class="open-btn">Open</a>
-    <a href="${d.url}" download class="download-btn">Download</a>
-  </div>
-`;
+      <div style="display:flex;gap:12px;align-items:center;">
+        <a href="${d.url}" target="_blank" class="btn btn-ghost open-btn" rel="noopener noreferrer">Open</a>
+        <button class="btn btn-primary btn-download" data-url="${d.url}" data-fn="${d.filename || `video_${idx+1}.mp4`}">Download</button>
+      </div>
+    `;
     resultList.appendChild(node);
   });
 
@@ -270,6 +302,26 @@ clearBtn.addEventListener("click", () => {
   clearResults();
 });
 
+// Event delegation: tangani klik tombol download yang dibuat dinamis
+if (resultList) {
+  resultList.addEventListener("click", async (e) => {
+    const dl = e.target.closest(".btn-download");
+    if (!dl) return;
+    const url = dl.dataset.url;
+    const fn = dl.dataset.fn || "video.mp4";
+    if (!url) {
+      showStatus("URL download tidak tersedia.", "error");
+      return;
+    }
+
+    try {
+      await downloadBlob(url, fn);
+    } catch (err) {
+      // error sudah ditangani di downloadBlob
+    }
+  });
+}
+
 // init
 clearResults();
 hideStatus();
@@ -277,4 +329,5 @@ hideStatus();
 /* NOTES:
  - Ganti API_BASE ke endpoint yang sesuai. Jika endpoint butuh POST / body JSON, ubah callApi() agar melakukan POST.
  - Jangan taruh API_KEY di client untuk production; buat server proxy dan simpan key di ENV.
- - Jika ingin aku siapin server-proxy (server.js + package.json) untuk TikHub yang otomatis pakai API key di ENV, bilang aja. */
+ - Jika butuh, gue bisa siapkan contoh server-proxy (server.js + package.json) yang memanggil TikHub/TikWM dan meneruskan respons ke client tanpa CORS.
+*/
