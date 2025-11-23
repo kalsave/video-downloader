@@ -41,12 +41,15 @@ body::before {
    CARD (GLASSMORPHISM + NEON)
    ============================= */
 .card {
-  background: rgba(0,0,0,0.25);
-  backdrop-filter: blur(6px);
-  border: 1px solid rgba(255,255,255,0.15);
+  background: rgba(0, 8, 25, 0.35);
+  backdrop-filter: blur(8px);
+  border-radius: 16px;
+  padding: 18px;
+  border: 1px solid rgba(120,160,255,0.18);
   box-shadow: 0 4px 22px rgba(0, 0, 0, 0.55),
               0 0 22px rgba(45,120,255,0.28) inset;
 }
+
 /* HEADER */
 .header { display:flex; gap:14px; align-items:center; margin-bottom:14px; }
 .brand { display:flex; gap:12px; align-items:center; }
@@ -65,11 +68,9 @@ body::before {
   width:100%;
   padding:14px 16px;
   border-radius:12px;
+  background: rgba(0,0,0,0.45);
   color:#fff;
-
-  background: rgba(0,0,0,0.28) !important;
-  backdrop-filter: blur(4px);
-  border: 1px solid rgba(150,180,255,0.35);
+  border: 1px solid rgba(140,180,255,0.35);
   box-shadow: 0 0 10px rgba(60,110,255,0.25);
 }
 
@@ -87,26 +88,23 @@ body::before {
 }
 
 .btn-primary {
-  background: rgba(60,110,255,0.85) !important;
-  backdrop-filter: blur(4px);
+  background: linear-gradient(180deg,#3f6aff,#2a4dff);
   color:white;
-  box-shadow: 0 0 18px rgba(77,130,255,0.6);
-  transition:.15s;
+  box-shadow: 
+    0 0 18px rgba(77,130,255,0.7),
+    0 6px 16px rgba(0,0,0,0.35);
+  transition: .15s;
 }
-
 .btn-primary:hover {
   filter: brightness(1.08);
-  box-shadow: 0 0 26px rgba(77,130,255,0.9);
+  box-shadow: 0 0 28px rgba(77,130,255,0.95);
 }
+
 .btn-ghost {
-  background: rgba(255,255,255,0.12) !important;
-  backdrop-filter: blur(4px);
+  background: rgba(255,255,255,0.15);
   color:white;
-  box-shadow: 0 0 12px rgba(255,255,255,0.25);
 }
-.card, #urlInput, .btn {
-  box-shadow: 0 4px 14px rgba(0,0,0,0.45);
-}
+
 /* ==========================
    STATUS BOX (SUCCESS/ERROR)
    ========================== */
