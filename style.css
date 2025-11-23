@@ -56,22 +56,21 @@ body::before {
 /* HEADER */
 .header { display:flex; gap:14px; align-items:center; margin-bottom:14px; }
 .brand { display:flex; gap:12px; align-items:center; }
+/* circular avatar */
 .avatar {
-  width:60px;
-  height:60px;
-  border-radius:8px; /* ubah sesuai selera: 50% bulat, 8px rounded */
-  overflow:hidden;
-  display:flex;
-  justify-content:center;
-  align-items:center;
-  background: transparent;
-  box-shadow: 0 0 10px rgba(0,0,0,0.25);
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  overflow: hidden;   /* wajib supaya gambar kepotong jadi lingkaran */
+  display: block;
 }
+
 .avatar img {
-  width:100%;
-  height:100%;
-  object-fit:cover;
-  display:block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;  /* crop supaya proporsional */
+  display: block;
+  border-radius: 0;   /* pastikan img gak override */
 }
 .title { font-size:26px; margin:0; font-weight:900; }
 .subtitle { margin:0; opacity:.9; }
